@@ -1,0 +1,6 @@
+Provisioning:
+  username: admin
+  password: supersecret
+  host: localhost
+  port: 5984
+  userdb: _users

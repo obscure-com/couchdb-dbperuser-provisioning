@@ -1,0 +1,11 @@
+{
+  "name": "couchdb-provision",
+  "version": "1.0.0",
+  "dependencies": {
+    "config": "",
+    "yaml": "",
+    "bluebird": "",
+    "uuid": "",
+    "request": ""
+  }
+}
