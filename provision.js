@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/local/bin/node
 
 var http = require('http');
 var url = require('url');
@@ -28,7 +28,7 @@ var log = function(mesg) {
   console.log(JSON.stringify(["log", mesg]));
 }
 
-var do_put = function(url, req, resolve, reject) {
+var do_put = function(url, req, resolve, reject, info) {
   var options = {
     url: url,
     headers: { 'Content-Type': 'application/json' },
@@ -42,12 +42,14 @@ var do_put = function(url, req, resolve, reject) {
   
   request.put(options, function(error, response, body) {
     if (error) {
+      info && (error.info = info);
       reject(error);
       return;
     }
     
     var b = JSON.parse(response.body);
     if (!b.ok) {
+      info && (b.info = info);
       reject(b);
     }
     else {
@@ -68,16 +70,25 @@ var create_user = function(data) {
       password: data.password,
       type: 'user',
       roles: [data.username],
-      'com.obscure.padsnpaws': {
-        dbname: data.username + '_' + uuid.v4()
-      }
+    };
+    
+    // set the namespaced data for this application
+    var dbname = [data.username];
+    if (CONFIG.add_namespace_to_dbname) {
+      dbname.push(namespace);
+    }
+    dbname.push(uuid.v4());
+    
+    user[namespace] = {
+      dbname: dbname.join('_')
     };
     
     do_put(
       'http://' + CONFIG.host + ':' + CONFIG.port + '/_users/org.couchdb.user:' + data.username,
       user,
       function(resp) { resolve(user) },
-      reject
+      reject,
+      'create user'
     );
   });
 }
@@ -85,10 +96,11 @@ var create_user = function(data) {
 var create_database = function(user) {
   return new Promise(function(resolve, reject) {
     do_put(
-      'http://' + CONFIG.host + ':' + CONFIG.port + '/' + user['com.obscure.padsnpaws'].dbname + '/',
+      'http://' + CONFIG.host + ':' + CONFIG.port + '/' + user[namespace].dbname + '/',
       null,
       function(resp) { resolve(user) },
-      reject
+      reject,
+      'create db'
     );
   });
 };
@@ -96,19 +108,20 @@ var create_database = function(user) {
 var add_security_doc = function(user) {
   return new Promise(function(resolve, reject) {
     do_put(
-      'http://' + CONFIG.host + ':' + CONFIG.port + '/' + user['com.obscure.padsnpaws'].dbname + '/_security',
+      'http://' + CONFIG.host + ':' + CONFIG.port + '/' + user[namespace].dbname + '/_security',
       {
         members: {
-          users: [user.name],
+          names: [],
           roles: [user.name]
         },
         admins: {
-          users: [user.name],
+          names: [user.name],
           roles: []
         }
       }, 
       function(resp) { resolve(user) },
-      reject
+      reject,
+      'add security doc'
     );
   });
 };
@@ -116,14 +129,15 @@ var add_security_doc = function(user) {
 var add_doc_update_ddoc = function(user) {
   return new Promise(function(resolve, reject) {
     var ddoc = {
-      validate_doc_update: "function(new_doc, old_doc, userCtx) { if (userCtx.roles.indexOf('"+user.name+"') == -1) { throw({forbidden: 'Not Authorized'}); } }"
+      validate_doc_update: "function(new_doc, old_doc, userCtx) { if (userCtx.name != '"+user.name+"' && userCtx.roles.indexOf('"+user.name+"') == -1) { throw({forbidden: 'Not Authorized'}); } }"
     };
     
     do_put(
-      'http://' + CONFIG.host + ':' + CONFIG.port + '/' + user['com.obscure.padsnpaws'].dbname + '/_design/security',
+      'http://' + CONFIG.host + ':' + CONFIG.port + '/' + user[namespace].dbname + '/_design/security',
       ddoc, 
       function(resp) { resolve(user) },
-      reject
+      reject,
+      'add validation fn'
     );
   });
 }
@@ -143,9 +157,12 @@ var server = http.createServer(function(req, resp) {
     .then(add_security_doc)
     .then(add_doc_update_ddoc)
     .then(function(d) {
+      // do not return the password
+      delete d['password'];
+      
       resp.writeHead(200, { 'Content-Type': 'application/json' });
       resp.end(JSON.stringify(d));
-      log('provisioned user: '+d.name+', db '+d['com.obscure.padsnpaws'].dbname);
+      log('provisioned user: '+d.name+', db '+d[namespace].dbname);
     })
     .catch(function(err) {
       resp.writeHead(403, { 'Content-Type': 'application/json' });
@@ -156,12 +173,16 @@ var server = http.createServer(function(req, resp) {
 });
 
 // OS daemon stdin listener
-
+var namespace;
 var stdin = process.openStdin();
 
 stdin.on('data', function(d) {
   // d will be the response from console.log below
-  server.listen(parseInt(JSON.parse(d)));
+  var conf = JSON.parse(d);
+  namespace = conf.namespace;
+  server.listen(parseInt(conf.port), function() {
+    log('provisioning service listening on port '+conf.port);
+  });
 });
 
 stdin.on('end', function () {
@@ -169,4 +190,4 @@ stdin.on('end', function () {
 });
 
 // ask for our port
-console.log(JSON.stringify(['get', 'user_database_provisioning', 'port']));
+console.log(JSON.stringify(['get', CONFIG.config_section]));
