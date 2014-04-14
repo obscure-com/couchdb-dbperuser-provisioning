@@ -1,5 +1,0 @@
-Provisioning:
-  host: localhost
-  port: 5984
-  userdb: _users
-  add_namespace_to_dbname: false

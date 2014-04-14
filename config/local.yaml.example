@@ -1,5 +1,0 @@
-Provisioning:
-  username: admin
-  password: supersecret
-  config_section: com_example_provisioning
-  add_namespace_to_dbname: true
