@@ -79,5 +79,6 @@ namespace string.
   
 ### References
 
-* [Matt Woodward's Blog: The Definitive Guide to CouchDB Authentication and Security](http://blog.mattwoodward.com/2012/03/definitive-guide-to-couchdb.html)
+* the [CouchDB Security Overview](http://couchdb.readthedocs.org/en/latest/intro/security.html)
+* [Matt Woodward's Blog: The Definitive Guide to CouchDB Authentication and Security](http://blog.mattwoodward.com/2012/03/definitive-guide-to-couchdb.html) (somewhat outdated but helpful in explaining the various security models)
 
