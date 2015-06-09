@@ -48,10 +48,15 @@ contents:
     admin_username = admin
     admin_password = admin
     namespace = com.example.myapp
+	add_namespace_to_dbname = true
+	; Format for the database name if add_namespace_to_dbname is true. Options: ns_user = namespace then username, user_ns = username then namespace
+	db_name_format = ns_user
     port = 8100
     
     [os_daemons]
     myapp_provision_daemon = /usr/bin/node /usr/bin/couchdb-provision myapp_provisioning
+	; example for Windows
+	myapp_provision_daemon = "C:\Program Files (x86)\nodejs\node.exe" C:\Users\[USER_NAME]\AppData\Roaming\npm\node_modules\couchdb-provision\lib\provision.js myapp_provision_daemon
     
     [httpd_global_handlers]
     _myapp_provision = {couch_httpd_proxy, handle_proxy_req, <<"http://127.0.0.1:8100">>}
