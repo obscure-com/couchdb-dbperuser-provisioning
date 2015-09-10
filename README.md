@@ -9,6 +9,8 @@ and dbs and setting up security so a user's database is private.  This repo cont
 [OS daemon](http://couchdb.readthedocs.org/en/latest/config/externals.html)
 that can be used to provision per-user databases for most use cases.
 
+Basic CORS Support added.
+
 ### How it works
 
 A client app makes an HTTP request to the provisioning daemon with a desired username and password.
